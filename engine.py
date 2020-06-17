@@ -2,14 +2,29 @@ import tcod
 
 from actions import Action, ActionType
 from input_handlers import handle_keys
+from entity import Entity
+from render_functions import render_all
+from map_objects.game_map import GameMap
 
 
 def main():
     screen_width: int = 80
     screen_height: int = 50
 
-    player_x: int = int(screen_width / 2)
-    player_y: int = int(screen_height / 2)
+    map_width: int = 80
+    map_height: int = 45
+
+    colors = {
+        "dark_wall": tcod.Color(0, 0, 100),
+        "dark_ground": tcod.Color(50, 50, 150),
+    }
+
+    game_map = GameMap(map_width, map_height)
+
+    player = Entity(int(screen_width / 2), int(screen_height / 2), "@", tcod.white)
+    npc = Entity(int(screen_width / 2) - 5, int(screen_height / 2), "@", tcod.yellow)
+
+    entities = [player, npc]
 
     tcod.console_set_custom_font(
         "arial10x10.png",
@@ -24,9 +39,8 @@ def main():
         vsync=False
     ) as root_console:
         while True:
-            root_console.print(x=player_x, y=player_y, string="@")
-            tcod.console_flush()
-            root_console.clear()
+
+            render_all(root_console, game_map, entities, colors)
 
             for event in tcod.event.wait():
                 if event.type == "QUIT":
@@ -42,9 +56,8 @@ def main():
                     if action_type == ActionType.MOVEMENT:
                         dx: int = action.kwargs.get("dx", 0)
                         dy: int = action.kwargs.get("dy", 0)
-
-                        player_x += dx
-                        player_y += dy
+                        if not game_map.is_blocked(player.x + dx, player.y + dy):
+                            player.move(dx, dy)
                     elif action_type == ActionType.ESCAPE:
                         raise SystemExit()
 
