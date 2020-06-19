@@ -1,5 +1,7 @@
 import tcod
 
+from typing import List
+
 from actions import Action, ActionType
 from input_handlers import handle_keys
 from entity import Entity
@@ -14,17 +16,25 @@ def main():
     map_width: int = 80
     map_height: int = 45
 
-    colors = {
+    room_max_size: int = 10
+    room_min_size: int = 6
+    max_rooms: int = 30
+
+    colors: dict = {
         "dark_wall": tcod.Color(0, 0, 100),
         "dark_ground": tcod.Color(50, 50, 150),
     }
 
-    game_map = GameMap(map_width, map_height)
+    game_map: GameMap = GameMap(map_width, map_height)
+    game_map.make_map(max_rooms, room_min_size, room_max_size)
 
     player = Entity(int(screen_width / 2), int(screen_height / 2), "@", tcod.white)
     npc = Entity(int(screen_width / 2) - 5, int(screen_height / 2), "@", tcod.yellow)
 
-    entities = [player, npc]
+    player.x, player.y = game_map.rooms[0].center
+    npc.x, npc.y = game_map.rooms[-1].center
+
+    entities: List[Entity] = [player, npc]
 
     tcod.console_set_custom_font(
         "arial10x10.png",
