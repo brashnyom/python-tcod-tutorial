@@ -5,23 +5,33 @@ from entity import Entity
 from map_objects.game_map import GameMap
 
 
-def render_all(con, game_map: GameMap, entities: List[Entity], colors: dict):
-    con.clear()
-
+def render_terrain(con, game_map: GameMap, fov_map: tcod.map.Map, colors: dict):
     for x in range(0, game_map.width):
         for y in range(0, game_map.height):
-
+            # TODO FIXME Exploration should probably be decoupled from this
+            visible = fov_map.fov[x][y]
             wall = game_map.tiles[x][y].blocked
+
+            if visible:
+                game_map.tiles[x][y].explored = True
+
+            if not game_map.tiles[x][y].explored:
+                continue
+
             if wall:
-                con.print(x=x, y=y, string="X", fg=colors["dark_wall"])
+                string = "X"
+                color = "light_wall" if visible else "dark_wall"
             else:
-                con.print(x=x, y=y, string=".", fg=colors["dark_ground"])
+                string = "."
+                color = "light_ground" if visible else "dark_ground"
+            con.print(x=x, y=y, string=string, fg=colors[color])
 
+
+def render_entities(con, entities: List[Entity], fov_map: tcod.map.Map):
     for entity in entities:
-        render_entity(con, entity)
+        if fov_map.fov[entity.x][entity.y]:
+            render_entity(con, entity)
 
-    tcod.console_flush()
 
-
-def render_entity(con, entity):
+def render_entity(con, entity: Entity):
     con.print(x=entity.x, y=entity.y, string=entity.char, fg=entity.color)

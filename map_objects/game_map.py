@@ -59,6 +59,8 @@ class GameMap:
 
             for other_room in self.rooms:
                 if new_room.intersect(other_room):
+                    # TODO FIXME This does not allow us an exact choice
+                    # of how many rooms we wish to have
                     break
             else:
                 self.rooms.append(new_room)
