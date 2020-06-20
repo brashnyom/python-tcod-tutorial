@@ -52,31 +52,27 @@ def main():
     fov_recompute: bool = True
     fov_map: tcod.map.Map = initialize_fov(game_map)
 
-    tcod.console_set_custom_font(
-        "arial10x10.png",
-        tcod.FONT_TYPE_GRAYSCALE | tcod.FONT_LAYOUT_TCOD
-    )
-
     game_state: GameStates = GameStates.PLAYERS_TURN
 
-    with tcod.console_init_root(
-        w=screen_width,
-        h=screen_height,
-        title="libtcod tutorial",
-        order="F",
-        vsync=False
-    ) as root_console:
-        while True:
+    tilesheet = tcod.tileset.load_tilesheet(
+        "Codepage-437.png", 32, 8, tcod.tileset.CHARMAP_CP437
+    )
 
-            root_console.clear()
+    console = tcod.Console(screen_width, screen_height)
+
+    with tcod.context.new_terminal(
+        console.width, console.height, tileset=tilesheet, title="roguelike tutorial"
+    ) as context:
+        while True:
+            console.clear()
             if fov_recompute:
                 recompute_fov(fov_map, player.x, player.y,
                               fov_radius, fov_light_walls, fov_algorithm)
                 fov_recompute = False
             # TODO We probably don't need to call render_terrain on every loop
-            render_terrain(root_console, game_map, fov_map, colors)
-            render_entities(root_console, entities, fov_map)
-            tcod.console_flush()
+            render_terrain(console, game_map, fov_map, colors)
+            render_entities(console, entities, fov_map)
+            context.present(console)
 
             if game_state == GameStates.ENEMY_TURN:
                 for entity in entities:
@@ -86,6 +82,7 @@ def main():
                 game_state = GameStates.PLAYERS_TURN
 
             for event in tcod.event.wait():
+                context.convert_event(event)
                 if event.type == "QUIT":
                     raise SystemExit()
                 if event.type == "KEYDOWN":

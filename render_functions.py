@@ -19,7 +19,7 @@ def render_terrain(con, game_map: GameMap, fov_map: tcod.map.Map, colors: dict):
                 continue
 
             if wall:
-                string = "X"
+                string = "\u2588"  # solid block
                 color = "light_wall" if visible else "dark_wall"
             else:
                 string = "."
