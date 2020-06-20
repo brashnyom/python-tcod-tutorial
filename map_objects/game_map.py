@@ -1,11 +1,24 @@
+import tcod
+
 from random import randint
-from typing import List
+from typing import List, Final
 
 from map_objects.tile import Tile
 from map_objects.rectangle import Rect
+from entity import Entity
 
 
 class GameMap:
+
+    monster_types: Final[dict] = {
+        "orc": {
+            "string": "o", "color": tcod.desaturated_green
+        },
+        "troll": {
+            "string": "T", "color": tcod.darker_green
+        }
+    }
+
     def __init__(self, width: int, height: int):
         self.width = width
         self.height = height
@@ -75,6 +88,32 @@ class GameMap:
                 self.connect_rooms_h(self.rooms[room_index], self.rooms[room_index + 1])
             else:
                 self.connect_rooms_v(self.rooms[room_index], self.rooms[room_index + 1])
+
+    def populate_room(
+        self, room: Rect, entities: List[Entity], max_monsters_per_room: int
+    ):
+        for i in range(0, randint(0, max_monsters_per_room)):
+            x: int = randint(room.x1 + 1, room.x2 - 1)
+            y: int = randint(room.y1 + 1, room.y2 - 1)
+            occupied: bool = any([
+                entity.x == x and entity.y == y for entity in entities
+            ])
+            if not occupied:
+                # TODO FIXME Again, this does not allow us an exact choice
+                # of how many monsters we want
+                monster_type: int = randint(0, 100)
+                if monster_type < 80:
+                    monster_name = "orc"
+                else:
+                    monster_name = "troll"
+                monster = self.monster_types[monster_name]
+                entities.append(Entity(
+                    x, y, monster["string"], monster["color"], monster_name, True)
+                )
+
+    def populate_map(self, entities: List[Entity], max_monsters_per_room: int):
+        for room in self.rooms:
+            self.populate_room(room, entities, max_monsters_per_room)
 
     def is_blocked(self, x: int, y: int):
         return self.tiles[x][y].blocked
