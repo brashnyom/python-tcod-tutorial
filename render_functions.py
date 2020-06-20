@@ -1,11 +1,26 @@
 import tcod
 
 from typing import List
+from enum import Enum
 from entity import Entity
-from map_objects.game_map import GameMap
 
 
-def render_terrain(con, game_map: GameMap, fov_map: tcod.map.Map, colors: dict):
+class RenderOrder(Enum):
+    CORPSE = 1
+    ITEM = 2
+    ACTOR = 3
+
+
+def render_player_stats(con, player: Entity):
+    con.print(
+        1,
+        con.height - 2,
+        f"{player.fighter.hp}/{player.fighter.max_hp} HP"  # type: ignore
+    )
+
+
+def render_terrain(con, game_map, fov_map: tcod.map.Map, colors: dict):
+    # TODO Add typing hints for GameMap without circular dependency
     for x in range(0, game_map.width):
         for y in range(0, game_map.height):
             # TODO FIXME Exploration should probably be decoupled from this
@@ -28,7 +43,7 @@ def render_terrain(con, game_map: GameMap, fov_map: tcod.map.Map, colors: dict):
 
 
 def render_entities(con, entities: List[Entity], fov_map: tcod.map.Map):
-    for entity in entities:
+    for entity in sorted(entities, key=lambda e: e.render_order.value):
         if fov_map.fov[entity.x][entity.y]:
             render_entity(con, entity)
 

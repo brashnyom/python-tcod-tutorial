@@ -6,16 +6,27 @@ from typing import List, Final
 from map_objects.tile import Tile
 from map_objects.rectangle import Rect
 from entity import Entity
+from components.fighter import Fighter
+from components.ai import BasicMonster
+from render_functions import RenderOrder
 
 
 class GameMap:
 
     monster_types: Final[dict] = {
         "orc": {
-            "string": "o", "color": tcod.desaturated_green
+            "string": "o",
+            "color": tcod.desaturated_green,
+            "hp": 10,
+            "defense": 0,
+            "power": 3,
         },
         "troll": {
-            "string": "T", "color": tcod.darker_green
+            "string": "T",
+            "color": tcod.darker_green,
+            "hp": 16,
+            "defense": 1,
+            "power": 4,
         }
     }
 
@@ -108,8 +119,11 @@ class GameMap:
                     monster_name = "troll"
                 monster = self.monster_types[monster_name]
                 entities.append(Entity(
-                    x, y, monster["string"], monster["color"], monster_name, True)
-                )
+                    x, y, monster["string"], monster["color"], monster_name,
+                    RenderOrder.ACTOR, True,
+                    Fighter(monster["hp"], monster["defense"], monster["power"]),
+                    BasicMonster()
+                ))
 
     def populate_map(self, entities: List[Entity], max_monsters_per_room: int):
         for room in self.rooms:

@@ -5,10 +5,13 @@ from typing import List, Optional
 from actions import Action, ActionType
 from input_handlers import handle_keys
 from entity import Entity, get_blocking_entity_at
-from render_functions import render_terrain, render_entities
+from render_functions import render_terrain, render_entities, \
+    render_player_stats, RenderOrder
 from fov_functions import initialize_fov, recompute_fov
 from map_objects.game_map import GameMap
 from game_states import GameStates
+from components.fighter import Fighter
+from death_functions import kill_player, kill_monster
 
 
 def main():
@@ -40,8 +43,16 @@ def main():
 
     game_map.make_map(max_rooms, room_min_size, room_max_size)
 
+    player_fighter_component = Fighter(30, 2, 5)
     player: Entity = Entity(
-        int(screen_width / 2), int(screen_height / 2), "@", tcod.white, "player", True
+        int(screen_width / 2),
+        int(screen_height / 2),
+        "@",
+        tcod.white,
+        "player",
+        RenderOrder.ACTOR,
+        True,
+        player_fighter_component
     )
     entities.append(player)
 
@@ -72,14 +83,35 @@ def main():
             # TODO We probably don't need to call render_terrain on every loop
             render_terrain(console, game_map, fov_map, colors)
             render_entities(console, entities, fov_map)
+            render_player_stats(console, player)
             context.present(console, integer_scaling=True)
 
             if game_state == GameStates.ENEMY_TURN:
                 for entity in entities:
-                    if entity is not player:
-                        print(f"The {entity.name} ponders the meaning of its "
-                              "existence.")
-                game_state = GameStates.PLAYERS_TURN
+                    if entity.ai is not None:
+                        enemy_turn_results = entity.ai.take_turn(
+                            player, fov_map, game_map, entities
+                        )
+
+                        for enemy_turn_result in enemy_turn_results:
+                            if "message" in enemy_turn_result:
+                                print(enemy_turn_result["message"])
+                            if "dead" in enemy_turn_result:
+                                if enemy_turn_result["dead"] is player:
+                                    message, game_state = kill_player(
+                                        enemy_turn_result["dead"]
+                                    )
+                                    print(message)
+                                else:
+                                    print(kill_monster(enemy_turn_result["dead"]))
+                            if game_state == GameStates.PLAYER_DEAD:
+                                break
+                        if game_state == GameStates.PLAYER_DEAD:
+                            break
+                else:
+                    game_state = GameStates.PLAYERS_TURN
+
+            player_turn_results = list()
 
             for event in tcod.event.wait():
                 context.convert_event(event)
@@ -105,14 +137,27 @@ def main():
                                 new_x, new_y, entities
                             )
                             if blocking_entity is not None:
-                                print(f"You kick the {blocking_entity.name} in the "
-                                      "shins, much to its annoyance!")
+                                player_turn_results.extend(
+                                    player.fighter.attack(blocking_entity)
+                                )
                             else:
                                 player.move(dx, dy)
                                 fov_recompute = True
                         game_state = GameStates.ENEMY_TURN
                     elif action_type == ActionType.ESCAPE:
                         raise SystemExit()
+
+            for player_turn_result in player_turn_results:
+                if "message" in player_turn_result:
+                    print(player_turn_result["message"])
+                if "dead" in player_turn_result:
+                    if player_turn_result["dead"] is player:
+                        message, game_state = kill_player(
+                            player_turn_result["dead"]
+                        )
+                        print(message)
+                    else:
+                        print(kill_monster(player_turn_result["dead"]))
 
 
 if __name__ == "__main__":
