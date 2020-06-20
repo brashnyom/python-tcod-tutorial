@@ -72,7 +72,7 @@ def main():
             # TODO We probably don't need to call render_terrain on every loop
             render_terrain(console, game_map, fov_map, colors)
             render_entities(console, entities, fov_map)
-            context.present(console)
+            context.present(console, integer_scaling=True)
 
             if game_state == GameStates.ENEMY_TURN:
                 for entity in entities:
