@@ -1,4 +1,7 @@
+import tcod
 from typing import Any, List
+
+from game_messages import Message
 
 
 class Fighter:
@@ -21,14 +24,11 @@ class Fighter:
         # TODO Add type hint for Entity (target) without circular dependency
         damage: int = self.power - target.fighter.defense
         if damage > 0:
-            results.append({
-                "message": (f"{self.owner.name} attacks {target.name}"
+            message_text = (f"{self.owner.name} attacks {target.name}"
                             f" for {damage} hit points.")
-            })
             results.extend(target.fighter.take_damage(damage))
         else:
-            results.append({
-                "message": (f"{self.owner.name} attacks {target.name}"
+            message_text = (f"{self.owner.name} attacks {target.name}"
                             " but does no damage.")
-            })
+        results.append({"message": Message(message_text, tcod.white)})
         return results

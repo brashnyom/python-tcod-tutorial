@@ -4,22 +4,31 @@ from typing import List, Optional
 
 from actions import Action, ActionType
 from input_handlers import handle_keys
-from entity import Entity, get_blocking_entity_at
+from entity import Entity, get_blocking_entity_at, get_entities_at
 from render_functions import render_terrain, render_entities, \
-    render_player_stats, RenderOrder
+    render_player_stats, render_message_log, RenderOrder
 from fov_functions import initialize_fov, recompute_fov
 from map_objects.game_map import GameMap
 from game_states import GameStates
 from components.fighter import Fighter
 from death_functions import kill_player, kill_monster
+from game_messages import Message, MessageLog
 
 
 def main():
     screen_width: int = 80
     screen_height: int = 50
 
+    bar_width: int = 20
+    panel_height: int = 7
+    panel_y: int = screen_height - panel_height
+
+    message_x: int = bar_width + 2
+    message_width: int = screen_width - message_x
+    message_height: int = panel_height - 1
+
     map_width: int = 80
-    map_height: int = 45
+    map_height: int = 43
 
     room_max_size: int = 10
     room_min_size: int = 6
@@ -63,19 +72,25 @@ def main():
     fov_recompute: bool = True
     fov_map: tcod.map.Map = initialize_fov(game_map)
 
+    message_log: MessageLog = MessageLog(message_x, message_width, message_height)
+
     game_state: GameStates = GameStates.PLAYERS_TURN
 
     tilesheet = tcod.tileset.load_tilesheet(
         "Codepage-437.png", 32, 8, tcod.tileset.CHARMAP_CP437
     )
 
+    mouse_coords: List[int] = [None, None]
+
     console = tcod.Console(screen_width, screen_height)
+    panel = tcod.Console(screen_width, panel_height)
 
     with tcod.context.new_terminal(
         console.width, console.height, tileset=tilesheet, title="roguelike tutorial"
     ) as context:
         while True:
             console.clear()
+            panel.clear()
             if fov_recompute:
                 recompute_fov(fov_map, player.x, player.y,
                               fov_radius, fov_light_walls, fov_algorithm)
@@ -83,7 +98,9 @@ def main():
             # TODO We probably don't need to call render_terrain on every loop
             render_terrain(console, game_map, fov_map, colors)
             render_entities(console, entities, fov_map)
-            render_player_stats(console, player)
+            render_player_stats(panel, bar_width, player)
+            render_message_log(panel, message_log)
+            panel.blit(console, 0, panel_y, 0, 0, screen_width, panel_height)
             context.present(console, integer_scaling=True)
 
             if game_state == GameStates.ENEMY_TURN:
@@ -95,15 +112,17 @@ def main():
 
                         for enemy_turn_result in enemy_turn_results:
                             if "message" in enemy_turn_result:
-                                print(enemy_turn_result["message"])
+                                message_log.add_message(enemy_turn_result["message"])
                             if "dead" in enemy_turn_result:
                                 if enemy_turn_result["dead"] is player:
                                     message, game_state = kill_player(
                                         enemy_turn_result["dead"]
                                     )
-                                    print(message)
+                                    message_log.add_message(message)
                                 else:
-                                    print(kill_monster(enemy_turn_result["dead"]))
+                                    message_log.add_message(
+                                        kill_monster(enemy_turn_result["dead"])
+                                    )
                             if game_state == GameStates.PLAYER_DEAD:
                                 break
                         if game_state == GameStates.PLAYER_DEAD:
@@ -146,18 +165,36 @@ def main():
                         game_state = GameStates.ENEMY_TURN
                     elif action_type == ActionType.ESCAPE:
                         raise SystemExit()
+                if event.type == "MOUSEMOTION":
+                    if event.tile.x < map_width and event.tile.y < map_height:
+                        new_mouse_coords = [event.tile.x, event.tile.y]
+                        if new_mouse_coords != mouse_coords:
+                            mouse_coords = new_mouse_coords
+                            if fov_map.fov[event.tile.x][event.tile.y]:
+                                location_entities = get_entities_at(
+                                    event.tile.x, event.tile.y, entities
+                                )
+                                if location_entities:
+                                    msg = ', '.join(
+                                        map(lambda e: e.name, location_entities)
+                                    )
+                                    message_log.add_message(
+                                        Message(f"You see here: {msg}", tcod.gray)
+                                    )
 
             for player_turn_result in player_turn_results:
                 if "message" in player_turn_result:
-                    print(player_turn_result["message"])
+                    message_log.add_message(player_turn_result["message"])
                 if "dead" in player_turn_result:
                     if player_turn_result["dead"] is player:
                         message, game_state = kill_player(
                             player_turn_result["dead"]
                         )
-                        print(message)
+                        message_log.add_message(message)
                     else:
-                        print(kill_monster(player_turn_result["dead"]))
+                        message_log.add_message(
+                            kill_monster(player_turn_result["dead"])
+                        )
 
 
 if __name__ == "__main__":

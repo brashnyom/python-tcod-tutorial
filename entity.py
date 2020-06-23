@@ -95,3 +95,7 @@ def get_blocking_entity_at(x: int, y: int, entities: List[Entity]) -> Optional[E
         if entity.x == x and entity.y == y and entity.blocks:
             return entity
     return None
+
+
+def get_entities_at(x: int, y: int, entities: List[Entity]) -> List[Entity]:
+    return [entity for entity in entities if entity.x == x and entity.y == y]

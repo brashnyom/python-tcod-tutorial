@@ -3,6 +3,7 @@ import tcod
 from typing import List
 from enum import Enum
 from entity import Entity
+from game_messages import MessageLog
 
 
 class RenderOrder(Enum):
@@ -11,11 +12,38 @@ class RenderOrder(Enum):
     ACTOR = 3
 
 
-def render_player_stats(con, player: Entity):
+def render_message_log(con, message_log: MessageLog):
+    for line_y, message in enumerate(message_log.messages):
+        con.print(message_log.x, line_y + 1, message.text, message.color)
+
+
+def render_bar(
+    con,
+    x: int,
+    y: int,
+    total_width: int,
+    name: str,
+    value: int,
+    maximum: int,
+    bar_color,
+    back_color
+):
+    bar_width: int = int(float(value) / maximum * total_width)
+    con.draw_rect(x, y, total_width, 1, 0, None, back_color)
+    if bar_width > 0:
+        con.draw_rect(x, y, bar_width, 1, 0, None, bar_color)
     con.print(
-        1,
-        con.height - 2,
-        f"{player.fighter.hp}/{player.fighter.max_hp} HP"  # type: ignore
+        x + int(total_width / 2), y, f"{name}: {value}/{maximum}", tcod.white,
+        alignment=tcod.CENTER
+    )
+
+
+def render_player_stats(con, bar_width: int, player: Entity):
+    # TODO Fix Optional[Fighter] mypy errors
+    render_bar(
+        con, 1, 1, bar_width, "HP",
+        player.fighter.hp, player.fighter.max_hp,  # type: ignore
+        tcod.light_red, tcod.darker_red
     )
 
 
