@@ -6,11 +6,12 @@ from actions import Action, ActionType
 from input_handlers import handle_keys
 from entity import Entity, get_blocking_entity_at, get_entities_at
 from render_functions import render_terrain, render_entities, \
-    render_player_stats, render_message_log, RenderOrder
+    render_player_stats, render_message_log, render_inventory, RenderOrder
 from fov_functions import initialize_fov, recompute_fov
 from map_objects.game_map import GameMap
 from game_states import GameStates
 from components.fighter import Fighter
+from components.inventory import Inventory
 from death_functions import kill_player, kill_monster
 from game_messages import Message, MessageLog
 
@@ -39,6 +40,7 @@ def main():
     fov_radius: int = 10
 
     max_monsters_per_room: int = 3
+    max_items_per_room: int = 2
 
     colors: dict = {
         "dark_wall": tcod.Color(0, 0, 100),
@@ -52,7 +54,8 @@ def main():
 
     game_map.make_map(max_rooms, room_min_size, room_max_size)
 
-    player_fighter_component = Fighter(30, 2, 5)
+    player_fighter_component: Fighter = Fighter(30, 2, 5)
+    player_inventory_component: Inventory = Inventory(25)
     player: Entity = Entity(
         int(screen_width / 2),
         int(screen_height / 2),
@@ -61,13 +64,14 @@ def main():
         "player",
         RenderOrder.ACTOR,
         True,
-        player_fighter_component
+        player_fighter_component,
+        inventory=player_inventory_component
     )
     entities.append(player)
 
     player.x, player.y = game_map.rooms[0].center
 
-    game_map.populate_map(entities, max_monsters_per_room)
+    game_map.populate_map(entities, max_monsters_per_room, max_items_per_room)
 
     fov_recompute: bool = True
     fov_map: tcod.map.Map = initialize_fov(game_map)
@@ -75,6 +79,7 @@ def main():
     message_log: MessageLog = MessageLog(message_x, message_width, message_height)
 
     game_state: GameStates = GameStates.PLAYERS_TURN
+    previous_game_state: GameStates = game_state
 
     tilesheet = tcod.tileset.load_tilesheet(
         "Codepage-437.png", 32, 8, tcod.tileset.CHARMAP_CP437
@@ -100,6 +105,19 @@ def main():
             render_entities(console, entities, fov_map)
             render_player_stats(panel, bar_width, player)
             render_message_log(panel, message_log)
+            if game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
+                if game_state == GameStates.SHOW_INVENTORY:
+                    inventory_title = \
+                        "Press the key next to an item to use it, or Esc to cancel.\n"
+                else:
+                    inventory_title = \
+                        "Press the key next to an item to drop it, or Esc to cancel.\n"
+                render_inventory(
+                    console,
+                    inventory_title,
+                    player.inventory,
+                    50
+                )
             panel.blit(console, 0, panel_y, 0, 0, screen_width, panel_height)
             context.present(console, integer_scaling=True)
 
@@ -137,15 +155,17 @@ def main():
                 if event.type == "QUIT":
                     raise SystemExit()
                 if event.type == "KEYDOWN":
-                    action: [Action, None] = handle_keys(event.sym)
+                    action: [Action, None] = handle_keys(event.sym, game_state)
 
                     if action is None:
                         continue
 
                     action_type: ActionType = action.action_type
 
-                    if action_type == ActionType.MOVEMENT \
-                       and game_state == GameStates.PLAYERS_TURN:
+                    if (
+                        action_type == ActionType.MOVEMENT
+                        and game_state == GameStates.PLAYERS_TURN
+                    ):
                         dx: int = action.kwargs.get("dx", 0)
                         dy: int = action.kwargs.get("dy", 0)
                         new_x: int = player.x + dx
@@ -163,8 +183,49 @@ def main():
                                 player.move(dx, dy)
                                 fov_recompute = True
                         game_state = GameStates.ENEMY_TURN
+                    elif (
+                        action_type == ActionType.PICKUP
+                        and game_state == GameStates.PLAYERS_TURN
+                    ):
+                        for entity in entities:
+                            if (
+                                entity.item
+                                and entity.x == player.x and entity.y == player.y
+                            ):
+                                pickup_results = player.inventory.add_item(entity)
+                                player_turn_results.extend(pickup_results)
+                                break
+                        else:
+                            message_log.add_message(
+                                Message("There is nothing here to pick up.",
+                                        tcod.yellow)
+                            )
+                    elif action_type == ActionType.SHOW_INVENTORY:
+                        if game_state != GameStates.SHOW_INVENTORY:
+                            previous_game_state = game_state
+                        game_state = GameStates.SHOW_INVENTORY
+                    elif action_type == ActionType.DROP_INVENTORY:
+                        if game_state != GameStates.DROP_INVENTORY:
+                            previous_game_state = game_state
+                        game_state = GameStates.DROP_INVENTORY
+                    elif action_type == ActionType.SELECT_ITEM:
+                        if previous_game_state != GameStates.PLAYER_DEAD:
+                            idx = action.kwargs.get("item_index", 0)
+                            if idx < len(player.inventory.items):
+                                item = player.inventory.items[idx]
+                                if game_state == GameStates.SHOW_INVENTORY:
+                                    player_turn_results.extend(
+                                        player.inventory.use(item)
+                                    )
+                                if game_state == GameStates.DROP_INVENTORY:
+                                    player_turn_results.extend(
+                                        player.inventory.drop(item)
+                                    )
                     elif action_type == ActionType.ESCAPE:
-                        raise SystemExit()
+                        if game_state == GameStates.SHOW_INVENTORY:
+                            game_state = previous_game_state
+                        else:
+                            raise SystemExit()
                 if event.type == "MOUSEMOTION":
                     if event.tile.x < map_width and event.tile.y < map_height:
                         new_mouse_coords = [event.tile.x, event.tile.y]
@@ -195,6 +256,14 @@ def main():
                         message_log.add_message(
                             kill_monster(player_turn_result["dead"])
                         )
+                if "item_added" in player_turn_result:
+                    entities.remove(player_turn_result["item_added"])
+                    game_state = GameStates.ENEMY_TURN
+                if "consumed" in player_turn_result:
+                    game_state = GameStates.ENEMY_TURN
+                if "item_dropped" in player_turn_result:
+                    entities.append(player_turn_result["item_dropped"])
+                    game_state = GameStates.ENEMY_TURN
 
 
 if __name__ == "__main__":

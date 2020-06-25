@@ -4,12 +4,17 @@ from typing import List
 from enum import Enum
 from entity import Entity
 from game_messages import MessageLog
+from menus import inventory_menu
 
 
 class RenderOrder(Enum):
     CORPSE = 1
     ITEM = 2
     ACTOR = 3
+
+
+def render_inventory(con, header: str, inventory, inventory_width: int):
+    inventory_menu(con, header, inventory, inventory_width)
 
 
 def render_message_log(con, message_log: MessageLog):

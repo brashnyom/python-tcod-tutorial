@@ -4,6 +4,10 @@ from enum import Enum
 class ActionType(Enum):
     ESCAPE = 1
     MOVEMENT = 2
+    PICKUP = 3
+    SHOW_INVENTORY = 4
+    DROP_INVENTORY = 5
+    SELECT_ITEM = 6
 
 
 class Action:

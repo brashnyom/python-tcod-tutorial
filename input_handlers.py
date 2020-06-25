@@ -2,9 +2,23 @@ import tcod.event
 
 from typing import Optional
 from actions import ActionType, Action
+from game_states import GameStates
 
 
-def handle_keys(key) -> Optional[Action]:
+def handle_keys(key, game_state: GameStates) -> Optional[Action]:
+    action = None
+    if game_state == GameStates.PLAYERS_TURN:
+        action = handle_keys_player_turn(key)
+    elif game_state == GameStates.PLAYER_DEAD:
+        action = handle_keys_player_dead(key)
+    elif game_state == GameStates.SHOW_INVENTORY:
+        action = handle_keys_inventory(key)
+    elif game_state == GameStates.DROP_INVENTORY:
+        action = handle_keys_inventory(key)
+    return action
+
+
+def handle_keys_player_turn(key) -> Optional[Action]:
     action = None
 
     # TODO Transfer this into a dictionary (event key -> action)
@@ -24,7 +38,36 @@ def handle_keys(key) -> Optional[Action]:
         action = Action(ActionType.MOVEMENT, dx=-1, dy=1)
     elif key == tcod.event.K_n:
         action = Action(ActionType.MOVEMENT, dx=1, dy=1)
+    elif key == tcod.event.K_g:
+        action = Action(ActionType.PICKUP)
+    elif key == tcod.event.K_i:
+        action = Action(ActionType.SHOW_INVENTORY)
+    elif key == tcod.event.K_d:
+        action = Action(ActionType.DROP_INVENTORY)
+    elif key == tcod.event.K_ESCAPE:
+        action = Action(ActionType.ESCAPE)
 
+    return action
+
+
+def handle_keys_player_dead(key) -> Optional[Action]:
+    action = None
+
+    if key == tcod.event.K_i:
+        action = Action(ActionType.SHOW_INVENTORY)
+    elif key == tcod.event.K_ESCAPE:
+        action = Action(ActionType.ESCAPE)
+
+    return action
+
+
+def handle_keys_inventory(key) -> Optional[Action]:
+    action = None
+
+    index: int = key - ord("a")
+
+    if index >= 0:
+        action = Action(ActionType.SELECT_ITEM, item_index=index)
     elif key == tcod.event.K_ESCAPE:
         action = Action(ActionType.ESCAPE)
 

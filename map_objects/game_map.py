@@ -8,6 +8,8 @@ from map_objects.rectangle import Rect
 from entity import Entity
 from components.fighter import Fighter
 from components.ai import BasicMonster
+from components.item import Item
+from item_functions import heal
 from render_functions import RenderOrder
 
 
@@ -101,7 +103,8 @@ class GameMap:
                 self.connect_rooms_v(self.rooms[room_index], self.rooms[room_index + 1])
 
     def populate_room(
-        self, room: Rect, entities: List[Entity], max_monsters_per_room: int
+        self, room: Rect, entities: List[Entity], max_monsters_per_room: int,
+        max_items_per_room: int
     ):
         for i in range(0, randint(0, max_monsters_per_room)):
             x: int = randint(room.x1 + 1, room.x2 - 1)
@@ -124,10 +127,28 @@ class GameMap:
                     Fighter(monster["hp"], monster["defense"], monster["power"]),
                     BasicMonster()
                 ))
+        # TODO FIXME Fix code duplication from above
+        for i in range(0, randint(0, max_items_per_room)):
+            x = randint(room.x1 + 1, room.x2 - 1)
+            y = randint(room.y1 + 1, room.y2 - 1)
+            occupied = any([
+                entity.x == x and entity.y == y for entity in entities
+            ])
+            if not occupied:
+                item_component = Item(use_function=heal, amount=4)
+                entities.append(Entity(
+                    x, y, "!", tcod.violet, "Healing Potion",
+                    render_order=RenderOrder.ITEM, item=item_component
+                ))
 
-    def populate_map(self, entities: List[Entity], max_monsters_per_room: int):
+    def populate_map(
+        self, entities: List[Entity], max_monsters_per_room: int,
+        max_items_per_room: int
+    ):
         for room in self.rooms:
-            self.populate_room(room, entities, max_monsters_per_room)
+            self.populate_room(
+                room, entities, max_monsters_per_room, max_items_per_room
+            )
 
     def is_blocked(self, x: int, y: int):
         return self.tiles[x][y].blocked

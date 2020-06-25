@@ -32,3 +32,8 @@ class Fighter:
                             " but does no damage.")
         results.append({"message": Message(message_text, tcod.white)})
         return results
+
+    def heal(self, amount: int):
+        self.hp += amount
+        if self.hp > self.max_hp:
+            self.hp = self.max_hp

@@ -5,6 +5,8 @@ import tcod
 from typing import List, Optional
 from components.fighter import Fighter
 from components.ai import BasicMonster
+from components.inventory import Inventory
+from components.item import Item
 
 
 class Entity:
@@ -22,6 +24,8 @@ class Entity:
         blocks: bool = False,
         fighter: Optional[Fighter] = None,
         ai: Optional[BasicMonster] = None,
+        inventory: Optional[Inventory] = None,
+        item: Optional[Item] = None,
     ):
         # TODO Add typing hints for RenderOrder without circular dependency
         self.x: int = x
@@ -33,11 +37,17 @@ class Entity:
         self.blocks: bool = blocks
         self.fighter: Optional[Fighter] = fighter
         self.ai: Optional[BasicMonster] = ai
+        self.inventory: Optional[Inventory] = inventory
+        self.item: Optional[Item] = item
 
         if self.fighter:
             self.fighter.owner = self
         if self.ai:
             self.ai.owner = self
+        if self.inventory:
+            self.inventory.owner = self
+        if self.item:
+            self.item.owner = self
 
     def distance_to(self, other: "Entity") -> float:
         dx: int = other.x - self.x
