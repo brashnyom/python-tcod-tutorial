@@ -5,6 +5,7 @@ from enum import Enum
 from entity import Entity
 from game_messages import MessageLog
 from menus import inventory_menu
+from game_states import GameStates
 
 
 class RenderOrder(Enum):
@@ -13,7 +14,13 @@ class RenderOrder(Enum):
     ACTOR = 3
 
 
-def render_inventory(con, header: str, inventory, inventory_width: int):
+def render_inventory(con, game_state, inventory, inventory_width: int):
+    if game_state == GameStates.SHOW_INVENTORY:
+        header = \
+            "Press the key next to an item to use it, or Esc to cancel.\n"
+    else:
+        header = \
+            "Press the key next to an item to drop it, or Esc to cancel.\n"
     inventory_menu(con, header, inventory, inventory_width)
 
 

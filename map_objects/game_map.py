@@ -9,8 +9,9 @@ from entity import Entity
 from components.fighter import Fighter
 from components.ai import BasicMonster
 from components.item import Item
-from item_functions import heal
+from item_functions import heal, cast_lightning, cast_fireball, cast_confusion
 from render_functions import RenderOrder
+from game_messages import Message
 
 
 class GameMap:
@@ -129,17 +130,54 @@ class GameMap:
                 ))
         # TODO FIXME Fix code duplication from above
         for i in range(0, randint(0, max_items_per_room)):
+            item_chance = randint(0, 100)
+
             x = randint(room.x1 + 1, room.x2 - 1)
             y = randint(room.y1 + 1, room.y2 - 1)
             occupied = any([
                 entity.x == x and entity.y == y for entity in entities
             ])
             if not occupied:
-                item_component = Item(use_function=heal, amount=4)
-                entities.append(Entity(
-                    x, y, "!", tcod.violet, "Healing Potion",
-                    render_order=RenderOrder.ITEM, item=item_component
-                ))
+                if item_chance < 70:
+                    item_component = Item(use_function=heal, amount=4)
+                    entities.append(Entity(
+                        x, y, "!", tcod.violet, "Healing Potion",
+                        render_order=RenderOrder.ITEM, item=item_component
+                    ))
+                elif item_chance < 80:
+                    item_component = Item(
+                        use_function=cast_fireball,
+                        damage=12,
+                        radius=3,
+                        targeting=True,
+                        targeting_message=Message(
+                            "Select a target and (f)ire.", tcod.light_cyan
+                        )
+                    )
+                    entities.append(Entity(
+                        x, y, "#", tcod.red, "Scroll of Fireball",
+                        render_order=RenderOrder.ITEM, item=item_component
+                    ))
+                elif item_chance < 90:
+                    item_component = Item(
+                        use_function=cast_confusion,
+                        targeting=True,
+                        targeting_message=Message(
+                            "Select a target and (f)ire.", tcod.light_cyan
+                        )
+                    )
+                    entities.append(Entity(
+                        x, y, "#", tcod.light_pink, "Scroll of Confusion",
+                        render_order=RenderOrder.ITEM, item=item_component
+                    ))
+                else:
+                    item_component = Item(
+                        use_function=cast_lightning, damage=20, maximum_range=5
+                    )
+                    entities.append(Entity(
+                        x, y, "#", tcod.yellow, "Lightning Bolt Scroll",
+                        render_order=RenderOrder.ITEM, item=item_component
+                    ))
 
     def populate_map(
         self, entities: List[Entity], max_monsters_per_room: int,

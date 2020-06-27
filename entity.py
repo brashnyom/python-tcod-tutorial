@@ -49,10 +49,13 @@ class Entity:
         if self.item:
             self.item.owner = self
 
-    def distance_to(self, other: "Entity") -> float:
-        dx: int = other.x - self.x
-        dy: int = other.y - self.y
+    def distance(self, x: int, y: int) -> float:
+        dx: int = x - self.x
+        dy: int = y - self.y
         return math.sqrt(dx ** 2 + dy ** 2)
+
+    def distance_to(self, other: "Entity") -> float:
+        return self.distance(other.x, other.y)
 
     def move(self, dx: int, dy: int):
         self.x += dx

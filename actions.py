@@ -8,6 +8,8 @@ class ActionType(Enum):
     SHOW_INVENTORY = 4
     DROP_INVENTORY = 5
     SELECT_ITEM = 6
+    SELECT_TARGET = 7
+    EXAMINE = 8
 
 
 class Action:

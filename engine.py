@@ -16,49 +16,63 @@ from death_functions import kill_player, kill_monster
 from game_messages import Message, MessageLog
 
 
-def main():
-    screen_width: int = 80
-    screen_height: int = 50
+# TODO Restore examining entities on tile
+restore = get_entities_at  # supress flake8 warning temp hack
 
-    bar_width: int = 20
-    panel_height: int = 7
-    panel_y: int = screen_height - panel_height
 
-    message_x: int = bar_width + 2
-    message_width: int = screen_width - message_x
-    message_height: int = panel_height - 1
+def init_config():
+    config = {
+        "screen_width": 80,
+        "screen_height": 50,
 
-    map_width: int = 80
-    map_height: int = 43
+        "bar_width": 20,
+        "panel_height": 7,
 
-    room_max_size: int = 10
-    room_min_size: int = 6
-    max_rooms: int = 30
+        "map_width": 80,
+        "map_height": 43,
 
-    fov_algorithm: int = 0
-    fov_light_walls: bool = True
-    fov_radius: int = 10
+        "room_max_size": 10,
+        "room_min_size": 6,
+        "max_rooms": 30,
 
-    max_monsters_per_room: int = 3
-    max_items_per_room: int = 2
+        "fov_algorithm": 0,
+        "fov_light_walls": True,
+        "fov_radius": 10,
 
-    colors: dict = {
-        "dark_wall": tcod.Color(0, 0, 100),
-        "dark_ground": tcod.Color(50, 50, 150),
-        "light_wall": tcod.Color(130, 110, 50),
-        "light_ground": tcod.Color(200, 180, 50),
+        "max_monsters_per_room": 3,
+        "max_items_per_room": 2,
+
+        "colors": {
+            "dark_wall": tcod.Color(0, 0, 100),
+            "dark_ground": tcod.Color(50, 50, 150),
+            "light_wall": tcod.Color(130, 110, 50),
+            "light_ground": tcod.Color(200, 180, 50),
+        }
     }
 
-    game_map: GameMap = GameMap(map_width, map_height)
+    config["panel_y"] = config["screen_height"] - config["panel_height"]
+    config["message_x"] = config["bar_width"] + 2
+    config["message_width"] = config["screen_width"] - config["message_x"]
+    config["message_height"] = config["panel_height"] - 1
+
+    return config
+
+
+def main():
+    config = init_config()
+
+    game_map: GameMap = GameMap(config["map_width"], config["map_height"])
     entities: List[Entity] = list()
 
-    game_map.make_map(max_rooms, room_min_size, room_max_size)
+    game_map.make_map(
+        config["max_rooms"], config["room_min_size"], config["room_max_size"]
+    )
 
     player_fighter_component: Fighter = Fighter(30, 2, 5)
     player_inventory_component: Inventory = Inventory(25)
     player: Entity = Entity(
-        int(screen_width / 2),
-        int(screen_height / 2),
+        int(config["screen_width"] / 2),
+        int(config["screen_height"] / 2),
         "@",
         tcod.white,
         "player",
@@ -71,12 +85,16 @@ def main():
 
     player.x, player.y = game_map.rooms[0].center
 
-    game_map.populate_map(entities, max_monsters_per_room, max_items_per_room)
+    game_map.populate_map(
+        entities, config["max_monsters_per_room"], config["max_items_per_room"]
+    )
+
+    message_log: MessageLog = MessageLog(
+        config["message_x"], config["message_width"], config["message_height"]
+    )
 
     fov_recompute: bool = True
     fov_map: tcod.map.Map = initialize_fov(game_map)
-
-    message_log: MessageLog = MessageLog(message_x, message_width, message_height)
 
     game_state: GameStates = GameStates.PLAYERS_TURN
     previous_game_state: GameStates = game_state
@@ -85,40 +103,55 @@ def main():
         "Codepage-437.png", 32, 8, tcod.tileset.CHARMAP_CP437
     )
 
-    mouse_coords: List[int] = [None, None]
+    console = tcod.Console(config["screen_width"], config["screen_height"])
+    panel = tcod.Console(config["screen_width"], config["panel_height"])
 
-    console = tcod.Console(screen_width, screen_height)
-    panel = tcod.Console(screen_width, panel_height)
+    targeting_item: Entity = None
+    targeting_x: int = 0
+    targeting_y: int = 0
 
     with tcod.context.new_terminal(
         console.width, console.height, tileset=tilesheet, title="roguelike tutorial"
     ) as context:
         while True:
+            player_turn_results = list()
+
+            if fov_recompute:
+                recompute_fov(
+                    fov_map,
+                    player.x,
+                    player.y,
+                    config["fov_radius"],
+                    config["fov_light_walls"],
+                    config["fov_algorithm"]
+                )
+                fov_recompute = False
+
             console.clear()
             panel.clear()
-            if fov_recompute:
-                recompute_fov(fov_map, player.x, player.y,
-                              fov_radius, fov_light_walls, fov_algorithm)
-                fov_recompute = False
+
             # TODO We probably don't need to call render_terrain on every loop
-            render_terrain(console, game_map, fov_map, colors)
+            render_terrain(console, game_map, fov_map, config["colors"])
             render_entities(console, entities, fov_map)
-            render_player_stats(panel, bar_width, player)
+            render_player_stats(panel, config["bar_width"], player)
             render_message_log(panel, message_log)
             if game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
-                if game_state == GameStates.SHOW_INVENTORY:
-                    inventory_title = \
-                        "Press the key next to an item to use it, or Esc to cancel.\n"
-                else:
-                    inventory_title = \
-                        "Press the key next to an item to drop it, or Esc to cancel.\n"
-                render_inventory(
-                    console,
-                    inventory_title,
-                    player.inventory,
-                    50
+                render_inventory(console, game_state, player.inventory, 50)
+            if game_state in (GameStates.TARGETING, GameStates.EXAMINE):
+                console.draw_rect(
+                    targeting_x, targeting_y, 1, 1, 0,
+                    fg=(0, 0, 0), bg=(255, 255, 0)
                 )
-            panel.blit(console, 0, panel_y, 0, 0, screen_width, panel_height)
+
+            panel.blit(
+                console,
+                0,
+                config["panel_y"],
+                0,
+                0,
+                config["screen_width"],
+                config["panel_height"]
+            )
             context.present(console, integer_scaling=True)
 
             if game_state == GameStates.ENEMY_TURN:
@@ -148,18 +181,14 @@ def main():
                 else:
                     game_state = GameStates.PLAYERS_TURN
 
-            player_turn_results = list()
-
             for event in tcod.event.wait():
                 context.convert_event(event)
                 if event.type == "QUIT":
                     raise SystemExit()
-                if event.type == "KEYDOWN":
+                elif event.type == "KEYDOWN":
                     action: [Action, None] = handle_keys(event.sym, game_state)
-
                     if action is None:
                         continue
-
                     action_type: ActionType = action.action_type
 
                     if (
@@ -183,6 +212,28 @@ def main():
                                 player.move(dx, dy)
                                 fov_recompute = True
                         game_state = GameStates.ENEMY_TURN
+                    elif (
+                        action_type == ActionType.MOVEMENT
+                        and game_state in (GameStates.TARGETING, GameStates.EXAMINE)
+                    ):
+                        dx: int = action.kwargs.get("dx", 0)
+                        dy: int = action.kwargs.get("dy", 0)
+                        targeting_x += dx
+                        targeting_y += dy
+                        if (
+                            game_state == GameStates.EXAMINE
+                            and fov_map.fov[targeting_x][targeting_y]
+                        ):
+                            location_entities = get_entities_at(
+                                targeting_x, targeting_y, entities
+                            )
+                            if location_entities:
+                                msg = ', '.join(
+                                    map(lambda e: e.name, location_entities)
+                                )
+                                message_log.add_message(
+                                    Message(f"You see here: {msg}", tcod.gray)
+                                )
                     elif (
                         action_type == ActionType.PICKUP
                         and game_state == GameStates.PLAYERS_TURN
@@ -215,33 +266,40 @@ def main():
                                 item = player.inventory.items[idx]
                                 if game_state == GameStates.SHOW_INVENTORY:
                                     player_turn_results.extend(
-                                        player.inventory.use(item)
+                                        player.inventory.use(
+                                            item, entities=entities, fov_map=fov_map
+                                        )
                                     )
                                 if game_state == GameStates.DROP_INVENTORY:
                                     player_turn_results.extend(
                                         player.inventory.drop(item)
                                     )
+                    elif (
+                        game_state == GameStates.TARGETING
+                        and action_type == ActionType.SELECT_TARGET
+                    ):
+                        player_turn_results.extend(
+                            player.inventory.use(
+                                targeting_item,
+                                entities=entities,
+                                fov_map=fov_map,
+                                target_x=targeting_x,
+                                target_y=targeting_y
+                            )
+                        )
+                    elif (
+                        game_state == GameStates.PLAYERS_TURN
+                        and action_type == ActionType.EXAMINE
+                    ):
+                        targeting_x, targeting_y = player.x, player.y
+                        game_state = GameStates.EXAMINE
                     elif action_type == ActionType.ESCAPE:
                         if game_state == GameStates.SHOW_INVENTORY:
                             game_state = previous_game_state
+                        elif game_state in (GameStates.TARGETING, GameStates.EXAMINE):
+                            player_turn_results.append({"targeting_cancelled": True})
                         else:
                             raise SystemExit()
-                if event.type == "MOUSEMOTION":
-                    if event.tile.x < map_width and event.tile.y < map_height:
-                        new_mouse_coords = [event.tile.x, event.tile.y]
-                        if new_mouse_coords != mouse_coords:
-                            mouse_coords = new_mouse_coords
-                            if fov_map.fov[event.tile.x][event.tile.y]:
-                                location_entities = get_entities_at(
-                                    event.tile.x, event.tile.y, entities
-                                )
-                                if location_entities:
-                                    msg = ', '.join(
-                                        map(lambda e: e.name, location_entities)
-                                    )
-                                    message_log.add_message(
-                                        Message(f"You see here: {msg}", tcod.gray)
-                                    )
 
             for player_turn_result in player_turn_results:
                 if "message" in player_turn_result:
@@ -264,6 +322,14 @@ def main():
                 if "item_dropped" in player_turn_result:
                     entities.append(player_turn_result["item_dropped"])
                     game_state = GameStates.ENEMY_TURN
+                if "targeting" in player_turn_result:
+                    game_state = GameStates.TARGETING
+                    targeting_item = player_turn_result["targeting"]
+                    targeting_x, targeting_y = player.x, player.y
+                    message_log.add_message(targeting_item.item.targeting_message)
+                if "targeting_cancelled" in player_turn_result:
+                    game_state = GameStates.PLAYERS_TURN
+                    message_log.add_message(Message("Targeting cancelled.", tcod.white))
 
 
 if __name__ == "__main__":
