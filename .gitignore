@@ -3,3 +3,4 @@ __pycache__
 *.swp
 .mypy_cache
 activate_env.sh
+savegame.dat

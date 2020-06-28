@@ -45,3 +45,26 @@ def inventory_menu(con, header: str, inventory: Inventory, inventory_width: int)
         options = [item.name for item in inventory.items]
 
     menu(con, header, options, inventory_width)
+
+
+def main_menu(con, background_image):
+    background_image.blit_2x(con, 0, 0)
+    con.print(
+        int(con.width / 2),
+        int(con.height / 2) - 4,
+        "TOMBS OF THE ANCIENT KINGS",
+        tcod.light_yellow,
+        alignment=tcod.CENTER
+    )
+    con.print(
+        int(con.width / 2),
+        int(con.height - 2),
+        "By brashnyom",
+        tcod.light_yellow,
+        alignment=tcod.CENTER
+    )
+    menu(con, "", ["Play a new game", "Continue last game", "Quit"], 24)
+
+
+def message_box(console, header, width):
+    menu(console, header, [], width)

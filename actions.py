@@ -10,6 +10,8 @@ class ActionType(Enum):
     SELECT_ITEM = 6
     SELECT_TARGET = 7
     EXAMINE = 8
+    NEW_GAME = 9
+    LOAD_GAME = 10
 
 
 class Action:

@@ -1,4 +1,3 @@
-from collections import namedtuple
 from functools import cached_property
 
 
@@ -11,10 +10,9 @@ class Rect:
 
     @cached_property
     def center(self):
-        center_tuple = namedtuple("Position", ["x", "y"])
         center_x = int((self.x2 + self.x1) / 2)
         center_y = int((self.y2 + self.y1) / 2)
-        return center_tuple(center_x, center_y)
+        return (center_x, center_y)
 
     def intersect(self, other: "Rect"):
         x_intersection = (self.x2 >= other.x1) and (self.x1 <= other.x2)

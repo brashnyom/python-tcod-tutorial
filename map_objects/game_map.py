@@ -65,12 +65,12 @@ class GameMap:
             self.carve_tile(x, y)
 
     def connect_rooms_h(self, l_room: Rect, r_room: Rect):
-        self.create_h_tunnel(l_room.center.x, r_room.center.x, l_room.center.y)
-        self.create_v_tunnel(l_room.center.y, r_room.center.y, r_room.center.x)
+        self.create_h_tunnel(l_room.center[0], r_room.center[0], l_room.center[1])
+        self.create_v_tunnel(l_room.center[1], r_room.center[1], r_room.center[0])
 
     def connect_rooms_v(self, l_room: Rect, r_room: Rect):
-        self.create_v_tunnel(l_room.center.y, r_room.center.y, l_room.center.x)
-        self.create_h_tunnel(l_room.center.x, r_room.center.x, r_room.center.y)
+        self.create_v_tunnel(l_room.center[1], r_room.center[1], l_room.center[0])
+        self.create_h_tunnel(l_room.center[0], r_room.center[0], r_room.center[1])
 
     def make_map(self, max_rooms: int, room_min_size: int, room_max_size: int):
         self.rooms = list()

@@ -105,3 +105,14 @@ def handle_keys_targeting(key) -> Optional[Action]:
         action = Action(ActionType.ESCAPE)
 
     return action
+
+
+def handle_keys_main_menu(key) -> Optional[Action]:
+    action = None
+    if key == tcod.event.K_a:
+        action = Action(ActionType.NEW_GAME)
+    elif key == tcod.event.K_b:
+        action = Action(ActionType.LOAD_GAME)
+    elif key == tcod.event.K_c or key == tcod.event.K_ESCAPE:
+        action = Action(ActionType.ESCAPE)
+    return action
