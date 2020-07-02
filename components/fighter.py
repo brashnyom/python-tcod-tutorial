@@ -5,18 +5,19 @@ from game_messages import Message
 
 
 class Fighter:
-    def __init__(self, hp: int, defense: int, power: int):
+    def __init__(self, hp: int, defense: int, power: int, xp: int = 0):
         self.owner: Any = None
         self.max_hp: int = hp
         self.hp: int = hp
         self.defense: int = defense
         self.power: int = power
+        self.xp: int = xp
 
     def take_damage(self, amount: int) -> List[dict]:
         results: List[dict] = list()
         self.hp -= amount
         if self.hp <= 0:
-            results.append({"dead": self.owner})
+            results.append({"dead": self.owner, "xp": self.xp})
         return results
 
     def attack(self, target) -> List[dict]:

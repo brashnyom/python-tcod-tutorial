@@ -68,3 +68,35 @@ def main_menu(con, background_image):
 
 def message_box(console, header, width):
     menu(console, header, [], width)
+
+
+def level_up_menu(console, header, player, menu_width):
+    options = [
+        f"Constitution (+20 HP, from {player.fighter.max_hp})",
+        f"Strength (+1 attack, from {player.fighter.power})",
+        f"Agility (+1 defense, from {player.fighter.defense})",
+    ]
+    menu(console, header, options, menu_width)
+
+
+def character_screen(console, player, width: int, height: int):
+    window = tcod.Console(width, height)
+
+    stats = [
+            f"Level: {player.level.current_level}",
+            f"Experience: {player.level.current_xp}",
+            f"Experience to next level: {player.level.experience_to_next_level}",
+            f"Maximum HP: {player.fighter.max_hp}",
+            f"Attack: {player.fighter.power}",
+            f"Defense: {player.fighter.defense}",
+    ]
+
+    for pos, string in enumerate(stats):
+        window.print_box(
+            0, pos + 1, width, height, string, (255, 255, 255), alignment=tcod.LEFT
+        )
+
+    x: int = int(console.width / 2 - width / 2)
+    y: int = int(console.height / 2 - height / 2)
+    window.blit(console, x, y, 0, 0, width, height)
+    del(window)

@@ -12,6 +12,10 @@ class ActionType(Enum):
     EXAMINE = 8
     NEW_GAME = 9
     LOAD_GAME = 10
+    TAKE_STAIRS = 11
+    RAISE_STAT = 12
+    SHOW_STATS = 13
+    WAIT = 14
 
 
 class Action:

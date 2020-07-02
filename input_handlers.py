@@ -19,6 +19,10 @@ def handle_keys(key, game_state: GameStates) -> Optional[Action]:
         action = handle_keys_targeting(key)
     elif game_state == GameStates.EXAMINE:
         action = handle_keys_targeting(key)
+    elif game_state == GameStates.LEVEL_UP:
+        action = handle_keys_level_up_menu(key)
+    elif game_state == GameStates.CHARACTER_SCREEN:
+        action = handle_keys_character_screen(key)
     return action
 
 
@@ -42,14 +46,20 @@ def handle_keys_player_turn(key) -> Optional[Action]:
         action = Action(ActionType.MOVEMENT, dx=-1, dy=1)
     elif key == tcod.event.K_n:
         action = Action(ActionType.MOVEMENT, dx=1, dy=1)
+    elif key == tcod.event.K_z:
+        action = Action(ActionType.WAIT)
     elif key == tcod.event.K_g:
         action = Action(ActionType.PICKUP)
     elif key == tcod.event.K_i:
         action = Action(ActionType.SHOW_INVENTORY)
     elif key == tcod.event.K_d:
         action = Action(ActionType.DROP_INVENTORY)
+    elif key == tcod.event.K_t:
+        action = Action(ActionType.TAKE_STAIRS)
     elif key == tcod.event.K_x:
         action = Action(ActionType.EXAMINE)
+    elif key == tcod.event.K_c:
+        action = Action(ActionType.SHOW_STATS)
     elif key == tcod.event.K_ESCAPE:
         action = Action(ActionType.ESCAPE)
 
@@ -104,6 +114,24 @@ def handle_keys_targeting(key) -> Optional[Action]:
     elif key == tcod.event.K_ESCAPE:
         action = Action(ActionType.ESCAPE)
 
+    return action
+
+
+def handle_keys_level_up_menu(key) -> Optional[Action]:
+    action = None
+    if key == tcod.event.K_a:
+        action = Action(ActionType.RAISE_STAT, stat="hp")
+    elif key == tcod.event.K_b:
+        action = Action(ActionType.RAISE_STAT, stat="str")
+    elif key == tcod.event.K_c:
+        action = Action(ActionType.RAISE_STAT, stat="def")
+    return action
+
+
+def handle_keys_character_screen(key) -> Optional[Action]:
+    action = None
+    if key == tcod.event.K_ESCAPE:
+        action = Action(ActionType.ESCAPE)
     return action
 
 

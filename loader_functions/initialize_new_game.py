@@ -5,6 +5,7 @@ from map_objects.game_map import GameMap
 from entity import Entity
 from components.fighter import Fighter
 from components.inventory import Inventory
+from components.level import Level
 from render_functions import RenderOrder
 from game_messages import MessageLog
 from game_states import GameStates
@@ -59,6 +60,7 @@ def get_game_variables(config):
 
     player_fighter_component: Fighter = Fighter(30, 2, 5)
     player_inventory_component: Inventory = Inventory(26)
+    player_level_component: Level = Level()
     player: Entity = Entity(
         int(config["screen_width"] / 2),
         int(config["screen_height"] / 2),
@@ -68,7 +70,8 @@ def get_game_variables(config):
         RenderOrder.ACTOR,
         True,
         player_fighter_component,
-        inventory=player_inventory_component
+        inventory=player_inventory_component,
+        level=player_level_component
     )
     entities.append(player)
 

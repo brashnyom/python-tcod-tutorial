@@ -9,6 +9,7 @@ from entity import Entity
 from components.fighter import Fighter
 from components.ai import BasicMonster
 from components.item import Item
+from components.stairs import Stairs
 from item_functions import heal, cast_lightning, cast_fireball, cast_confusion
 from render_functions import RenderOrder
 from game_messages import Message
@@ -23,6 +24,7 @@ class GameMap:
             "hp": 10,
             "defense": 0,
             "power": 3,
+            "xp": 35,
         },
         "troll": {
             "string": "T",
@@ -30,14 +32,16 @@ class GameMap:
             "hp": 16,
             "defense": 1,
             "power": 4,
+            "xp": 100,
         }
     }
 
-    def __init__(self, width: int, height: int):
-        self.width = width
-        self.height = height
+    def __init__(self, width: int, height: int, dungeon_level: int = 1):
+        self.width: int = width
+        self.height: int = height
         self.tiles = self.initialize_tiles()
         self.rooms: List[Rect] = list()
+        self.dungeon_level: int = dungeon_level
 
     def initialize_tiles(self):
         tiles = [
@@ -122,11 +126,15 @@ class GameMap:
                 else:
                     monster_name = "troll"
                 monster = self.monster_types[monster_name]
+
+                monster_fighter = Fighter(
+                    monster["hp"], monster["defense"], monster["power"], monster["xp"]
+                )
                 entities.append(Entity(
                     x, y, monster["string"], monster["color"], monster_name,
                     RenderOrder.ACTOR, True,
-                    Fighter(monster["hp"], monster["defense"], monster["power"]),
-                    BasicMonster()
+                    monster_fighter,
+                    BasicMonster(),
                 ))
         # TODO FIXME Fix code duplication from above
         for i in range(0, randint(0, max_items_per_room)):
@@ -188,5 +196,33 @@ class GameMap:
                 room, entities, max_monsters_per_room, max_items_per_room
             )
 
+        stairs_component = Stairs(self.dungeon_level + 1)
+        x, y = self.rooms[-1].center
+        down_stairs = Entity(
+            x, y, ">", tcod.white, "Stairs",
+            RenderOrder.STAIRS, stairs=stairs_component
+        )
+        entities.append(down_stairs)
+
     def is_blocked(self, x: int, y: int):
         return self.tiles[x][y].blocked
+
+    def next_floor(self, player: Entity, message_log, config: dict):
+        # FIXME There is a bug where the player can spawn walled-in on the next floor
+        self.dungeon_level += 1
+        entities = [player]
+
+        self.tiles = self.initialize_tiles()
+        self.make_map(
+            config["max_rooms"], config["room_min_size"], config["room_max_size"]
+        )
+        self.populate_map(
+            entities, config["max_monsters_per_room"], config["max_items_per_room"]
+        )
+
+        player.fighter.heal(int(player.fighter.max_hp / 2))  # type: ignore
+        message_log.add_message(Message(
+            "You take a moment to rest, and recover your strength.", tcod.light_violet
+        ))
+
+        return entities

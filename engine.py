@@ -7,7 +7,8 @@ from actions import Action, ActionType
 from input_handlers import handle_keys, handle_keys_main_menu
 from entity import Entity, get_blocking_entity_at, get_entities_at
 from render_functions import render_terrain, render_entities, \
-    render_player_stats, render_message_log, render_inventory
+    render_player_stats, render_message_log, render_inventory, \
+    render_dungeon_level, render_level_up_menu, render_character_screen
 from fov_functions import initialize_fov, recompute_fov
 from game_states import GameStates
 from death_functions import kill_player, kill_monster
@@ -50,9 +51,10 @@ def play_game(
 
         # TODO We probably don't need to call render_terrain on every loop
         render_terrain(console, game_map, fov_map, config["colors"])
-        render_entities(console, entities, fov_map)
+        render_entities(console, entities, game_map, fov_map)
         render_player_stats(panel, config["bar_width"], player)
         render_message_log(panel, message_log)
+        render_dungeon_level(panel, game_map)
         if game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
             render_inventory(console, game_state, player.inventory, 50)
         if game_state in (GameStates.TARGETING, GameStates.EXAMINE):
@@ -60,6 +62,10 @@ def play_game(
                 targeting_x, targeting_y, 1, 1, 0,
                 fg=(0, 0, 0), bg=(255, 255, 0)
             )
+        if game_state == GameStates.CHARACTER_SCREEN:
+            render_character_screen(console, game_state, player)
+        if game_state == GameStates.LEVEL_UP:
+            render_level_up_menu(console, game_state, player, 50)
 
         panel.blit(
             console,
@@ -132,6 +138,11 @@ def play_game(
                             fov_recompute = True
                     game_state = GameStates.ENEMY_TURN
                 elif (
+                    action_type == ActionType.WAIT
+                    and game_state == GameStates.PLAYERS_TURN
+                ):
+                    game_state = GameStates.ENEMY_TURN
+                elif (
                     action_type == ActionType.MOVEMENT
                     and game_state in (GameStates.TARGETING, GameStates.EXAMINE)
                 ):
@@ -178,6 +189,10 @@ def play_game(
                     if game_state != GameStates.DROP_INVENTORY:
                         previous_game_state = game_state
                     game_state = GameStates.DROP_INVENTORY
+                elif action_type == ActionType.SHOW_STATS:
+                    if game_state != GameStates.CHARACTER_SCREEN:
+                        previous_game_state = game_state
+                    game_state = GameStates.CHARACTER_SCREEN
                 elif action_type == ActionType.SELECT_ITEM:
                     if previous_game_state != GameStates.PLAYER_DEAD:
                         idx = action.kwargs.get("item_index", 0)
@@ -212,8 +227,41 @@ def play_game(
                 ):
                     targeting_x, targeting_y = player.x, player.y
                     game_state = GameStates.EXAMINE
+                elif (
+                    action_type == ActionType.TAKE_STAIRS
+                    and game_state == GameStates.PLAYERS_TURN
+                ):
+                    for entity in entities:
+                        if (
+                            entity.stairs
+                            and entity.x == player.x
+                            and entity.y == player.y
+                        ):
+                            entities = game_map.next_floor(player, message_log, config)
+                            fov_map = initialize_fov(game_map)
+                            fov_recompute = True
+                            console.clear()
+                            break
+                    else:
+                        message_log.add_message(Message(
+                            "There are no stairs here.", tcod.yellow
+                        ))
+                elif (
+                    game_state == GameStates.LEVEL_UP
+                    and action_type == ActionType.RAISE_STAT
+                ):
+                    raised_stat = action.kwargs["stat"]
+                    if raised_stat == "hp":
+                        player.fighter.max_hp += 20
+                        player.fighter.hp += 20
+                    elif raised_stat == "str":
+                        player.fighter.power += 1
+                    elif raised_stat == "def":
+                        player.fighter.defense += 1
+                    game_state = previous_game_state
                 elif action_type == ActionType.ESCAPE:
-                    if game_state == GameStates.SHOW_INVENTORY:
+                    if game_state in (GameStates.SHOW_INVENTORY,
+                                      GameStates.CHARACTER_SCREEN):
                         game_state = previous_game_state
                     elif game_state in (GameStates.TARGETING, GameStates.EXAMINE):
                         player_turn_results.append({"targeting_cancelled": True})
@@ -250,6 +298,20 @@ def play_game(
             if "targeting_cancelled" in player_turn_result:
                 game_state = GameStates.PLAYERS_TURN
                 message_log.add_message(Message("Targeting cancelled.", tcod.white))
+            if "xp" in player_turn_result:
+                leveled_up: bool = player.level.add_xp(player_turn_result["xp"])
+                message_log.add_message(Message(
+                    f"You gain {player_turn_result['xp']} experience points."
+                ))
+
+                if leveled_up:
+                    message_log.add_message(Message(
+                        ("Your battle skills grow stronger! You reached "
+                         f"level {player.level.current_level}!"),
+                        tcod.yellow
+                    ))
+                    previous_game_state = game_state
+                    game_state = GameStates.LEVEL_UP
 
 
 def main():

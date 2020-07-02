@@ -9,3 +9,5 @@ class GameStates(Enum):
     DROP_INVENTORY = 5
     TARGETING = 6
     EXAMINE = 7
+    LEVEL_UP = 8
+    CHARACTER_SCREEN = 9

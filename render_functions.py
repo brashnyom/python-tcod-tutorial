@@ -1,17 +1,29 @@
 import tcod
 
 from typing import List
-from enum import Enum
+from enum import Enum, auto
 from entity import Entity
 from game_messages import MessageLog
-from menus import inventory_menu
+from menus import inventory_menu, level_up_menu, character_screen
 from game_states import GameStates
 
 
 class RenderOrder(Enum):
-    CORPSE = 1
-    ITEM = 2
-    ACTOR = 3
+    STAIRS = auto()
+    CORPSE = auto()
+    ITEM = auto()
+    ACTOR = auto()
+
+
+def render_character_screen(con, game_state, player):
+    if game_state == GameStates.CHARACTER_SCREEN:
+        character_screen(con, player, 30, 10)
+
+
+def render_level_up_menu(con, game_state, player, menu_width: int):
+    if game_state == GameStates.LEVEL_UP:
+        header = "Level up! Choose a stat to raise: "
+        level_up_menu(con, header, player, menu_width)
 
 
 def render_inventory(con, game_state, inventory, inventory_width: int):
@@ -59,6 +71,13 @@ def render_player_stats(con, bar_width: int, player: Entity):
     )
 
 
+def render_dungeon_level(con, game_map):
+    con.print(
+        1, 3, f"Dungeon level: {game_map.dungeon_level}", tcod.white,
+        alignment=tcod.LEFT
+    )
+
+
 def render_terrain(con, game_map, fov_map: tcod.map.Map, colors: dict):
     # TODO Add typing hints for GameMap without circular dependency
     for x in range(0, game_map.width):
@@ -82,9 +101,11 @@ def render_terrain(con, game_map, fov_map: tcod.map.Map, colors: dict):
             con.print(x=x, y=y, string=string, fg=colors[color])
 
 
-def render_entities(con, entities: List[Entity], fov_map: tcod.map.Map):
+def render_entities(con, entities: List[Entity], game_map, fov_map: tcod.map.Map):
     for entity in sorted(entities, key=lambda e: e.render_order.value):
-        if fov_map.fov[entity.x][entity.y]:
+        is_stairs = bool(entity.stairs is not None)
+        is_explored = game_map.tiles[entity.x][entity.y].explored
+        if fov_map.fov[entity.x][entity.y] or (is_stairs and is_explored):
             render_entity(con, entity)
 
 
