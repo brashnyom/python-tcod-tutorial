@@ -58,7 +58,7 @@ def get_game_variables(config):
         config["max_rooms"], config["room_min_size"], config["room_max_size"]
     )
 
-    player_fighter_component: Fighter = Fighter(30, 2, 5)
+    player_fighter_component: Fighter = Fighter(30, 1, 4)
     player_inventory_component: Inventory = Inventory(26)
     player_level_component: Level = Level()
     player: Entity = Entity(
@@ -77,9 +77,7 @@ def get_game_variables(config):
 
     player.x, player.y = game_map.rooms[0].center
 
-    game_map.populate_map(
-        entities, config["max_monsters_per_room"], config["max_items_per_room"]
-    )
+    game_map.populate_map(entities)
 
     message_log: MessageLog = MessageLog(
         config["message_x"], config["message_width"], config["message_height"]

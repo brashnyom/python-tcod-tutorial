@@ -14,6 +14,8 @@ from item_functions import heal, cast_lightning, cast_fireball, cast_confusion
 from render_functions import RenderOrder
 from game_messages import Message
 
+from random_utils import from_dungeon_level, random_choice_from_dict
+
 
 class GameMap:
 
@@ -21,19 +23,31 @@ class GameMap:
         "orc": {
             "string": "o",
             "color": tcod.desaturated_green,
-            "hp": 10,
+            "hp": 20,
             "defense": 0,
-            "power": 3,
+            "power": 4,
             "xp": 35,
         },
         "troll": {
             "string": "T",
             "color": tcod.darker_green,
-            "hp": 16,
-            "defense": 1,
-            "power": 4,
+            "hp": 30,
+            "defense": 2,
+            "power": 8,
             "xp": 100,
         }
+    }
+
+    monster_chances: dict = {
+        "orc": 80,
+        "troll": 20,
+    }
+
+    item_choices: dict = {
+        "healing_potion": 70,
+        "lightning_scroll": 10,
+        "fireball_scroll": 10,
+        "confusion_scroll": 10,
     }
 
     def __init__(self, width: int, height: int, dungeon_level: int = 1):
@@ -108,8 +122,9 @@ class GameMap:
                 self.connect_rooms_v(self.rooms[room_index], self.rooms[room_index + 1])
 
     def populate_room(
-        self, room: Rect, entities: List[Entity], max_monsters_per_room: int,
-        max_items_per_room: int
+        self, room: Rect, entities: List[Entity],
+        max_monsters_per_room: int,
+        max_items_per_room: int,
     ):
         for i in range(0, randint(0, max_monsters_per_room)):
             x: int = randint(room.x1 + 1, room.x2 - 1)
@@ -120,11 +135,7 @@ class GameMap:
             if not occupied:
                 # TODO FIXME Again, this does not allow us an exact choice
                 # of how many monsters we want
-                monster_type: int = randint(0, 100)
-                if monster_type < 80:
-                    monster_name = "orc"
-                else:
-                    monster_name = "troll"
+                monster_name = random_choice_from_dict(self.monster_chances)
                 monster = self.monster_types[monster_name]
 
                 monster_fighter = Fighter(
@@ -138,7 +149,7 @@ class GameMap:
                 ))
         # TODO FIXME Fix code duplication from above
         for i in range(0, randint(0, max_items_per_room)):
-            item_chance = randint(0, 100)
+            item_choice = random_choice_from_dict(self.item_choices)
 
             x = randint(room.x1 + 1, room.x2 - 1)
             y = randint(room.y1 + 1, room.y2 - 1)
@@ -146,16 +157,16 @@ class GameMap:
                 entity.x == x and entity.y == y for entity in entities
             ])
             if not occupied:
-                if item_chance < 70:
-                    item_component = Item(use_function=heal, amount=4)
+                if item_choice == "healing_potion":
+                    item_component = Item(use_function=heal, amount=40)
                     entities.append(Entity(
                         x, y, "!", tcod.violet, "Healing Potion",
                         render_order=RenderOrder.ITEM, item=item_component
                     ))
-                elif item_chance < 80:
+                elif item_choice == "fireball_scroll":
                     item_component = Item(
                         use_function=cast_fireball,
-                        damage=12,
+                        damage=25,
                         radius=3,
                         targeting=True,
                         targeting_message=Message(
@@ -166,7 +177,7 @@ class GameMap:
                         x, y, "#", tcod.red, "Scroll of Fireball",
                         render_order=RenderOrder.ITEM, item=item_component
                     ))
-                elif item_chance < 90:
+                elif item_choice == "confusion_scroll":
                     item_component = Item(
                         use_function=cast_confusion,
                         targeting=True,
@@ -180,17 +191,35 @@ class GameMap:
                     ))
                 else:
                     item_component = Item(
-                        use_function=cast_lightning, damage=20, maximum_range=5
+                        use_function=cast_lightning, damage=40, maximum_range=5
                     )
                     entities.append(Entity(
                         x, y, "#", tcod.yellow, "Lightning Bolt Scroll",
                         render_order=RenderOrder.ITEM, item=item_component
                     ))
 
-    def populate_map(
-        self, entities: List[Entity], max_monsters_per_room: int,
-        max_items_per_room: int
-    ):
+    def populate_map(self, entities: List[Entity]):
+        max_monsters_per_room: int = from_dungeon_level(
+                [[2, 1], [3, 4], [5, 6]], self.dungeon_level
+        )
+        max_items_per_room: int = from_dungeon_level(
+                [[1, 1], [2, 4]], self.dungeon_level
+        )
+
+        self.monster_chances = {
+            "orc": 80,
+            "troll": from_dungeon_level(
+                [[15, 3], [30, 5], [60, 7]], self.dungeon_level
+            )
+        }
+
+        self.item_chances = {
+            "healing_potion": 35,
+            "lightning_scroll": from_dungeon_level([[25, 4]], self.dungeon_level),
+            "fireball_scroll": from_dungeon_level([[25, 6]], self.dungeon_level),
+            "confusion_scroll": from_dungeon_level([[10, 2]], self.dungeon_level),
+        }
+
         for room in self.rooms:
             self.populate_room(
                 room, entities, max_monsters_per_room, max_items_per_room
@@ -208,7 +237,6 @@ class GameMap:
         return self.tiles[x][y].blocked
 
     def next_floor(self, player: Entity, message_log, config: dict):
-        # FIXME There is a bug where the player can spawn walled-in on the next floor
         self.dungeon_level += 1
         entities = [player]
 
@@ -216,10 +244,9 @@ class GameMap:
         self.make_map(
             config["max_rooms"], config["room_min_size"], config["room_max_size"]
         )
-        self.populate_map(
-            entities, config["max_monsters_per_room"], config["max_items_per_room"]
-        )
+        self.populate_map(entities)
 
+        player.x, player.y = self.rooms[0].center
         player.fighter.heal(int(player.fighter.max_hp / 2))  # type: ignore
         message_log.add_message(Message(
             "You take a moment to rest, and recover your strength.", tcod.light_violet
