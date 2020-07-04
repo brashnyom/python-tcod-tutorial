@@ -56,7 +56,7 @@ def play_game(
         render_message_log(panel, message_log)
         render_dungeon_level(panel, game_map)
         if game_state in (GameStates.SHOW_INVENTORY, GameStates.DROP_INVENTORY):
-            render_inventory(console, game_state, player.inventory, 50)
+            render_inventory(console, game_state, player, 50)
         if game_state in (GameStates.TARGETING, GameStates.EXAMINE):
             console.draw_rect(
                 targeting_x, targeting_y, 1, 1, 0,
@@ -252,12 +252,12 @@ def play_game(
                 ):
                     raised_stat = action.kwargs["stat"]
                     if raised_stat == "hp":
-                        player.fighter.max_hp += 20
+                        player.fighter.base_max_hp += 20
                         player.fighter.hp += 20
                     elif raised_stat == "str":
-                        player.fighter.power += 1
+                        player.fighter.base_power += 1
                     elif raised_stat == "def":
-                        player.fighter.defense += 1
+                        player.fighter.base_defense += 1
                     game_state = previous_game_state
                 elif action_type == ActionType.ESCAPE:
                     if game_state in (GameStates.SHOW_INVENTORY,
@@ -312,6 +312,19 @@ def play_game(
                     ))
                     previous_game_state = game_state
                     game_state = GameStates.LEVEL_UP
+            if "equip" in player_turn_result:
+                equip_results = player.equipment.toggle_equip(
+                    player_turn_result["equip"]
+                )
+                for equip_result in equip_results:
+                    equipped = equip_result.get("equipped")
+                    dequipped = equip_result.get("dequipped")
+                    if equipped:
+                        message = Message(f"You equip the {equipped.name}")
+                    elif dequipped:
+                        message = Message(f"You unequip the {dequipped.name}")
+                    message_log.add_message(message)
+                game_state = GameStates.ENEMY_TURN
 
 
 def main():

@@ -35,14 +35,22 @@ def menu(con, header: str, options: list, width: int):
     del(window)
 
 
-def inventory_menu(con, header: str, inventory: Inventory, inventory_width: int):
+def inventory_menu(con, header: str, player, inventory_width: int):
     # show a menu with each item of the inventory as an option
+    inventory: Inventory = player.inventory
 
     options: list
     if len(inventory.items) == 0:
         options = ["Inventory is empty."]
     else:
-        options = [item.name for item in inventory.items]
+        options = []
+        for item in inventory.items:
+            if player.equipment.main_hand == item:
+                options.append(f"{item.name} (on main hand)")
+            elif player.equipment.off_hand == item:
+                options.append(f"{item.name} (on off hand)")
+            else:
+                options.append(item.name)
 
     menu(con, header, options, inventory_width)
 

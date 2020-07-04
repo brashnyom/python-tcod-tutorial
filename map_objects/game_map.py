@@ -10,6 +10,8 @@ from components.fighter import Fighter
 from components.ai import BasicMonster
 from components.item import Item
 from components.stairs import Stairs
+from components.equipment import EquipmentSlots
+from components.equippable import Equippable
 from item_functions import heal, cast_lightning, cast_fireball, cast_confusion
 from render_functions import RenderOrder
 from game_messages import Message
@@ -45,6 +47,8 @@ class GameMap:
 
     item_choices: dict = {
         "healing_potion": 70,
+        "sword": 10,
+        "shield": 10,
         "lightning_scroll": 10,
         "fireball_scroll": 10,
         "confusion_scroll": 10,
@@ -189,6 +193,22 @@ class GameMap:
                         x, y, "#", tcod.light_pink, "Scroll of Confusion",
                         render_order=RenderOrder.ITEM, item=item_component
                     ))
+                elif item_choice == "sword":
+                    equippable_component = Equippable(
+                        EquipmentSlots.MAIN_HAND, power_bonus=3
+                    )
+                    entities.append(Entity(
+                        x, y, "/", tcod.sky, "Sword",
+                        render_order=RenderOrder.ITEM, equippable=equippable_component
+                    ))
+                elif item_choice == "shield":
+                    equippable_component = Equippable(
+                        EquipmentSlots.OFF_HAND, defense_bonus=1
+                    )
+                    entities.append(Entity(
+                        x, y, "[", tcod.darker_orange, "Shield",
+                        render_order=RenderOrder.ITEM, equippable=equippable_component
+                    ))
                 else:
                     item_component = Item(
                         use_function=cast_lightning, damage=40, maximum_range=5
@@ -215,6 +235,8 @@ class GameMap:
 
         self.item_chances = {
             "healing_potion": 35,
+            "sword": from_dungeon_level([[5, 4]], self.dungeon_level),
+            "shield": from_dungeon_level([[15, 8]], self.dungeon_level),
             "lightning_scroll": from_dungeon_level([[25, 4]], self.dungeon_level),
             "fireball_scroll": from_dungeon_level([[25, 6]], self.dungeon_level),
             "confusion_scroll": from_dungeon_level([[10, 2]], self.dungeon_level),

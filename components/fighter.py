@@ -7,11 +7,35 @@ from game_messages import Message
 class Fighter:
     def __init__(self, hp: int, defense: int, power: int, xp: int = 0):
         self.owner: Any = None
-        self.max_hp: int = hp
+        self.base_max_hp: int = hp
         self.hp: int = hp
-        self.defense: int = defense
-        self.power: int = power
+        self.base_defense: int = defense
+        self.base_power: int = power
         self.xp: int = xp
+
+    @property
+    def max_hp(self):
+        if self.owner and self.owner.equipment:
+            bonus = self.owner.equipment.max_hp_bonus
+        else:
+            bonus = 0
+        return self.base_max_hp + bonus
+
+    @property
+    def power(self):
+        if self.owner and self.owner.equipment:
+            bonus = self.owner.equipment.power_bonus
+        else:
+            bonus = 0
+        return self.base_power + bonus
+
+    @property
+    def defense(self):
+        if self.owner and self.owner.equipment:
+            bonus = self.owner.equipment.defense_bonus
+        else:
+            bonus = 0
+        return self.base_defense + bonus
 
     def take_damage(self, amount: int) -> List[dict]:
         results: List[dict] = list()

@@ -6,6 +6,9 @@ from entity import Entity
 from components.fighter import Fighter
 from components.inventory import Inventory
 from components.level import Level
+from components.equipment import Equipment
+from components.equippable import Equippable
+from equipment_slots import EquipmentSlots
 from render_functions import RenderOrder
 from game_messages import MessageLog
 from game_states import GameStates
@@ -58,9 +61,10 @@ def get_game_variables(config):
         config["max_rooms"], config["room_min_size"], config["room_max_size"]
     )
 
-    player_fighter_component: Fighter = Fighter(30, 1, 4)
+    player_fighter_component: Fighter = Fighter(30, 1, 2)
     player_inventory_component: Inventory = Inventory(26)
     player_level_component: Level = Level()
+    player_equipment_component: Equipment = Equipment()
     player: Entity = Entity(
         int(config["screen_width"] / 2),
         int(config["screen_height"] / 2),
@@ -71,11 +75,20 @@ def get_game_variables(config):
         True,
         player_fighter_component,
         inventory=player_inventory_component,
-        level=player_level_component
+        level=player_level_component,
+        equipment=player_equipment_component
     )
     entities.append(player)
 
     player.x, player.y = game_map.rooms[0].center
+
+    equippable_component = Equippable(EquipmentSlots.MAIN_HAND, power_bonus=2)
+    dagger = Entity(
+        0, 0, '-', tcod.sky, "Dagger", render_order=RenderOrder.ITEM,
+        equippable=equippable_component
+    )
+    player.inventory.add_item(dagger)
+    player.equipment.toggle_equip(dagger)
 
     game_map.populate_map(entities)
 

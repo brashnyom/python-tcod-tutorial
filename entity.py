@@ -9,6 +9,8 @@ from components.inventory import Inventory
 from components.item import Item
 from components.stairs import Stairs
 from components.level import Level
+from components.equipment import Equipment
+from components.equippable import Equippable
 
 
 class Entity:
@@ -30,6 +32,8 @@ class Entity:
         item: Optional[Item] = None,
         stairs: Optional[Stairs] = None,
         level: Optional[Level] = None,
+        equipment: Optional[Equipment] = None,
+        equippable: Optional[Equippable] = None,
     ):
         # TODO Add typing hints for RenderOrder without circular dependency
         self.x: int = x
@@ -45,6 +49,8 @@ class Entity:
         self.item: Optional[Item] = item
         self.stairs: Optional[Stairs] = stairs
         self.level: Optional[Level] = level
+        self.equipment: Optional[Equipment] = equipment
+        self.equippable: Optional[Equippable] = equippable
 
         if self.fighter:
             self.fighter.owner = self
@@ -58,6 +64,14 @@ class Entity:
             self.stairs.owner = self
         if self.level:
             self.level.owner = self
+        if self.equipment:
+            self.equipment.owner = self
+        if self.equippable:
+            self.equippable.owner = self
+            if not self.item:
+                item = Item()
+                self.item = item
+                self.item.owner = self
 
     def distance(self, x: int, y: int) -> float:
         dx: int = x - self.x

@@ -26,14 +26,14 @@ def render_level_up_menu(con, game_state, player, menu_width: int):
         level_up_menu(con, header, player, menu_width)
 
 
-def render_inventory(con, game_state, inventory, inventory_width: int):
+def render_inventory(con, game_state, player, inventory_width: int):
     if game_state == GameStates.SHOW_INVENTORY:
         header = \
             "Press the key next to an item to use it, or Esc to cancel.\n"
     else:
         header = \
             "Press the key next to an item to drop it, or Esc to cancel.\n"
-    inventory_menu(con, header, inventory, inventory_width)
+    inventory_menu(con, header, player, inventory_width)
 
 
 def render_message_log(con, message_log: MessageLog):

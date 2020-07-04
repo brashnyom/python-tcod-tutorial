@@ -15,7 +15,6 @@ class Inventory:
 
         if len(self.items) >= self.capacity:
             results.append({
-                "item_added": None,
                 "message": Message("Cannot pick up, inventory is full.", tcod.yellow)
             })
         else:
@@ -35,11 +34,16 @@ class Inventory:
 
         item_component = item_entity.item
         if item_component.use_function is None:
-            results.append({
-                "message": Message(
-                    f"The {item_entity.name} cannot be used.", tcod.yellow
-                )
-            })
+            equippable_component = item_entity.equippable
+
+            if equippable_component:
+                results.append({"equip": item_entity})
+            else:
+                results.append({
+                    "message": Message(
+                        f"The {item_entity.name} cannot be used.", tcod.yellow
+                    )
+                })
         else:
             kwargs = {**item_component.function_kwargs, **kwargs}
             if (
@@ -58,6 +62,13 @@ class Inventory:
 
     def drop(self, item_entity, **kwargs) -> List[dict]:
         results: List[dict] = list()
+
+        if (
+            self.owner.equipment.main_hand == item_entity
+            or self.owner.equipment.off_hand == item_entity
+        ):
+            results.append({"equip": item_entity})
+
         results.append({
             "item_dropped": item_entity,
             "message": Message(
